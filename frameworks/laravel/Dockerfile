@@ -6,7 +6,7 @@
 #   - AIO:   leave PROCESS unset -> supervisord runs web + queue + scheduler
 #   - Split: set PROCESS=web|queue|scheduler -> that one process only
 #
-FROM dunglas/frankenphp:php8.3
+FROM dunglas/frankenphp:php8.4
 
 # System packages: supervisor (AIO), Node (Inertia/Vite build), git+unzip (composer).
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # PHP extensions Laravel needs.
 RUN install-php-extensions pcntl pdo_mysql redis opcache bcmath intl
+
+# Composer isn't bundled in the FrankenPHP image — copy it from the official image.
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 COPY . .
