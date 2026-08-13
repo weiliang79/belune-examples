@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Belune's Caddy, which terminates TLS and forwards over plain
+        // HTTP. Trust the proxy so X-Forwarded-Proto is honored — otherwise the
+        // app thinks requests are HTTP and generates http:// asset URLs, which
+        // the browser blocks as mixed content on the HTTPS page (blank screen).
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
