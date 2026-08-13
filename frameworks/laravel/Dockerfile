@@ -41,4 +41,11 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/laravel.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# The FrankenPHP base image ships a HEALTHCHECK that probes Caddy's admin API on
+# :2019 — but we run `frankenphp php-server`, which doesn't expose it, so that
+# check always fails and the container reports unhealthy. Probe Laravel's own
+# lightweight `/up` health route on the app port instead.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS http://localhost:8080/up || exit 1
+
 ENTRYPOINT ["entrypoint.sh"]
