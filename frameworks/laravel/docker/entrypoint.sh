@@ -6,6 +6,16 @@ set -e
 #   web | queue | scheduler -> that single process (one-process-per-container)
 PROCESS="${PROCESS:-all}"
 
+# The root filesystem is read-only, but Laravel compiles Blade views at runtime.
+# `view:cache` (baked at build) covers ordinary templates, yet inline/string
+# components still compile on first render and write into the compiled-views
+# directory — which lives on the read-only rootfs. Redirect that directory to the
+# writable /tmp and seed it from the baked cache so the first request stays warm.
+# Applies to every role: queue/scheduler also render views (e.g. mailables).
+export VIEW_COMPILED_PATH=/tmp/laravel-views
+mkdir -p "$VIEW_COMPILED_PATH"
+cp -a /app/storage/framework/views/. "$VIEW_COMPILED_PATH/" 2>/dev/null || true
+
 # Run migrations once, from the web/AIO role only, so queue/scheduler containers
 # don't race it. Non-fatal: a running app is better than a crash loop if the DB
 # is briefly unreachable.
