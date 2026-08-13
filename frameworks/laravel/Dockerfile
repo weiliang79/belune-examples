@@ -39,13 +39,16 @@ RUN export APP_KEY="base64:$(head -c 32 /dev/urandom | base64)" \
 
 COPY docker/supervisord.conf /etc/supervisor/conf.d/laravel.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY docker/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.sh
 
-# The FrankenPHP base image ships a HEALTHCHECK that probes Caddy's admin API on
-# :2019 — but we run `frankenphp php-server`, which doesn't expose it, so that
-# check always fails and the container reports unhealthy. Probe Laravel's own
-# lightweight `/up` health route on the app port instead.
+# The FrankenPHP base image's HEALTHCHECK probes Caddy's admin API on :2019,
+# which `frankenphp php-server` doesn't expose — so it always fails. Replace it
+# with a role-aware check (see docker/healthcheck.sh) that probes the right thing
+# per PROCESS: HTTP /up for web/AIO, a port probe for Reverb, a heartbeat for the
+# scheduler, and crash-restart only for the queue. Without this, portless worker
+# roles (queue/scheduler) report unhealthy even while running fine.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8080/up || exit 1
+    CMD healthcheck.sh
 
 ENTRYPOINT ["entrypoint.sh"]

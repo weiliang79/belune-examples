@@ -16,6 +16,12 @@ export VIEW_COMPILED_PATH=/tmp/laravel-views
 mkdir -p "$VIEW_COMPILED_PATH"
 cp -a /app/storage/framework/views/. "$VIEW_COMPILED_PATH/" 2>/dev/null || true
 
+# Seed the scheduler heartbeat so the role-aware healthcheck has a fresh file
+# before schedule:work's first tick; the scheduled task refreshes it each minute.
+if [ "$PROCESS" = "all" ] || [ "$PROCESS" = "scheduler" ]; then
+    touch /tmp/scheduler-heartbeat 2>/dev/null || true
+fi
+
 # Run migrations once, from the web/AIO role only, so queue/scheduler containers
 # don't race it. Non-fatal: a running app is better than a crash loop if the DB
 # is briefly unreachable.
