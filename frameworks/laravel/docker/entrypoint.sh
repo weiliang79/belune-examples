@@ -2,8 +2,9 @@
 set -e
 
 # Which process should this container run?
-#   unset / "all"          -> supervisord runs web + queue + scheduler (AIO)
-#   web | queue | scheduler -> that single process (one-process-per-container)
+#   unset / "all"                    -> supervisord runs web + queue + scheduler (AIO)
+#   web | queue | scheduler | reverb -> that single process (one-per-container)
+# (reverb needs laravel/reverb installed — see the docs' WebSockets section.)
 PROCESS="${PROCESS:-all}"
 
 # The root filesystem is read-only, but Laravel compiles Blade views at runtime.
@@ -33,6 +34,7 @@ case "$PROCESS" in
     web)       exec frankenphp php-server --listen :8080 --root public ;;
     queue)     exec php artisan queue:work --tries=3 --max-time=3600 ;;
     scheduler) exec php artisan schedule:work ;;
+    reverb)    exec php artisan reverb:start --host=0.0.0.0 --port=8081 ;;
     all)       exec supervisord -c /etc/supervisor/conf.d/laravel.conf -n ;;
-    *)         echo "entrypoint: unknown PROCESS '$PROCESS' (use web|queue|scheduler, or leave unset)" >&2; exit 1 ;;
+    *)         echo "entrypoint: unknown PROCESS '$PROCESS' (use web|queue|scheduler|reverb, or leave unset)" >&2; exit 1 ;;
 esac
